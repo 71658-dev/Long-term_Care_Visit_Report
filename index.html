@@ -4,15 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>新案訪視檔填寫系統</title>
-    <!-- 引入 Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 網頁 Favicon 圖示 (筆記本圖案) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+    
+    <!-- 引入生成的 Tailwind CSS -->
+    <link rel="stylesheet" href="output.css">
     <!-- 引入 React 與 ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <!-- 引入 Babel 供瀏覽器端編譯 JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- 引入 Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="assets/react.production.min.js"></script>
+    <script src="assets/react-dom.production.min.js"></script>
+        <!-- 引入 Lucide Icons -->
+    <script src="assets/lucide.min.js"></script>
 
     <style>
         /* 預覽與列印共用樣式 (A4 文件質感) */
@@ -36,11 +38,15 @@
         }
 
         /* 列印專用樣式 */
+        @page {
+            margin: 1.27cm;
+        }
         @media print {
-            body {
-                background-color: white;
-                margin: 0;
-                padding: 0;
+            body, html {
+                background-color: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                min-width: 0 !important;
             }
             .no-print {
                 display: none !important;
@@ -49,17 +55,19 @@
                 display: block !important;
             }
             .print-container {
-                padding: 1cm;
+                padding: 0;
+                background-color: white !important;
+                min-height: auto !important;
             }
             .highlight-input {
                 font-weight: bold;
                 color: black;
                 background-color: transparent;
             }
-            /* 強制背景顏色與文字顏色在列印時顯示（如果需要） */
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+            /* 優化列印排版 */
+            #export-content {
+                display: block;
+                width: 100%;
             }
         }
 
@@ -76,415 +84,14 @@
 
         body {
             background-color: #f3f4f6;
-            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            min-width: 1024px;
+            overflow-x: auto;
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-
-        // --- 選項資料 (整理自 CSV) ---
-        const OPTIONS = {
-            visitType: ["初評", "復評"],
-            referrer: ["案家人協助", "服務單位協助", "個案"],
-            participants: ["個案", "案家人", "個管師"], // 複選
-            gender: ["男", "女"],
-            welfare: ["第一類", "第二類", "第三類"],
-            disability: ["具身障證明", "無身障證明"],
-            foreignCare: ["聘僱有外籍看護", "未聘僱外籍看護"],
-            marriage: ["已婚", "喪偶", "離婚", "未婚", "再婚"],
-            children: ["無子女", "育有子女"],
-            livingWith: ["案夫", "案妻", "案子", "案女", "案孫", "案媳", "朋友", "其他"],
-            memo1Options: [
-                "另未同住子女，可適時返回探視、協助，整體家庭支持可。",
-                "另未同住子女，因故較少返回探視、協助。"
-            ],
-            diseases: ["高血壓", "糖尿病", "高血脂", "心臟疾病", "骨科疾病", "退化性關節炎", "骨質疏鬆", "脊椎神經壓迫", "脊椎滑脫", "骨折", "癌症", "中風", "便祕", "攝護腺疾病", "帕金森氏症", "失智症", "睡眠障礙"], // 複選
-            escort: ["案子", "案女", "外看", "個案", "居服人員", "朋友", "其他"], // 複選
-            hospital: ["新竹台大醫院", "新竹馬偕醫院", "新竹國泰醫院", "新竹國軍醫院", "南門醫院", "安慎診所", "OO診所"],
-            consciousness: ["意識清楚", "意識混亂", "嗜睡", "叫喚無反應，呈木僵態"],
-            communication: ["可溝通對答", "可簡單對答", "加大音量，可溝通對答", "加大音量，可簡單對答，過程需重複確認"],
-            disabilityReason: ["疾病", "年老退化", "體況衰弱", "認知功能退化"],
-            actionStatus: ["緩慢", "不易", "受限", "困難"],
-            actionItems: ["進食", "沐浴", "個人修飾", "穿脫衣物", "大小便控制", "如廁", "移位", "行走", "上下樓梯"], // 複選
-            toileting: [
-                "具備如廁意識，可自行如廁", 
-                "具備如廁意識，需他人協助如廁", 
-                "具備如廁意識，惟大便偶有失控", 
-                "具備如廁意識，惟大便偶有失控，使用尿布輔助"
-            ],
-            transferring: [
-                "可自行起身移位", 
-                "起身移位緩慢", 
-                "起身移位不易、欠穩", 
-                "起身移不易，需他人適時扶持"
-            ],
-            walking: [
-                "可自行行走", 
-                "會使用拐杖輔助行走", 
-                "會使用助行器輔助行走", 
-                "行走皆以輪椅代步",
-                "步態緩慢",
-                "步態欠穩",
-                "步態欠穩，需他人陪同"
-            ], // 可複選
-            stairs: [
-                "可扶持扶手上、下階梯。", 
-                "上下樓梯欠穩，需他人陪同、維護安全。", 
-                "上下樓梯困難，需他人攙扶、維護安全。",
-                "無法上下階梯"
-            ],
-            housingType: ["透天厝、無電梯", "透天厝、有電梯", "公寓、無電梯", "華廈、具電梯", "社區式電梯大樓"],
-            livingEnvironment: [
-                "居住環境未構成障礙", 
-                "居住環境具部分障礙，包含:臥室、走道、浴廁、出入口", 
-                "居住環境具部分安全疑慮，包含:臥室、走道、浴廁、出入口"
-            ],
-            serviceItems: ["照顧服務", "專業服務", "交通接送", "輔助補助", "居家無障礙環境改善", "喘息服務"], // 複選
-            careNeed: [
-                "評估本案家庭照顧者，未符合轉介指標，爰請個管師持續追蹤關懷，倘照顧情況改變，可視需求轉介家照服務。",
-                "評估本案家庭照顧者，符合轉介指標，經詢主要照顧者，無意願轉介，爰請個管師持續追蹤關懷，倘照顧情況改變，可視需求轉介家照服務。",
-                "評估本案家庭照顧者，符合轉介指標，經詢主要照顧者，有意願轉介，爰請個管師協助轉介。"
-            ],
-            dispatchPrinciple: ["輪派", "案家指定"],
-            aUnit: [
-                "財團法人天主教耶穌會新竹社會服務中心",
-                "社團法人中華民國士林靈糧堂社會福利協會",
-                "財團法人老五老基金會",
-                "順順居家護理所",
-                "國泰醫療財團法人新竹國泰綜合醫院"
-            ]
-        };
-
-        // --- 共用 UI 元件 (移到 App 外層以確保不會重新渲染導致輸入框失去焦點) ---
-        const SectionCard = ({ title, children }) => (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-                <h2 className="text-xl font-bold text-gray-800 border-b-2 border-blue-500 pb-2 mb-4">{title}</h2>
-                <div className="space-y-4">
-                    {children}
-                </div>
-            </div>
-        );
-
-        const RadioGroup = ({ label, name, options, value, onChange, required = false }) => (
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {label} {required && <span className="text-red-500">*</span>}
-                </label>
-                <div className="flex flex-wrap gap-3">
-                    {options.map(opt => (
-                        <label key={opt} className={`flex items-center p-2 border rounded cursor-pointer transition-colors ${value === opt ? 'bg-blue-50 border-blue-400' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                            <input
-                                type="radio"
-                                name={name}
-                                value={opt}
-                                checked={value === opt}
-                                onChange={onChange}
-                                className="text-blue-600 focus:ring-blue-500 mr-2"
-                            />
-                            <span className="text-sm text-gray-800">{opt}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
-        );
-
-        const CheckboxGroup = ({ label, name, options, values = [], onChange }) => (
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {label} <span className="text-xs text-blue-500 font-normal ml-2">(可複選)</span>
-                </label>
-                <div className="flex flex-wrap gap-3">
-                    {options.map(opt => (
-                        <label key={opt} className={`flex items-center p-2 border rounded cursor-pointer transition-colors ${values.includes(opt) ? 'bg-green-50 border-green-400' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                            <input
-                                type="checkbox"
-                                checked={values.includes(opt)}
-                                onChange={(e) => onChange(name, opt, e.target.checked)}
-                                className="text-green-600 focus:ring-green-500 mr-2 rounded"
-                            />
-                            <span className="text-sm text-gray-800">{opt}</span>
-                        </label>
-                    ))}
-                </div>
-            </div>
-        );
-
-        // 輔助函數：格式化輸出文字
-        const f = (val, fallback = "______") => {
-            if (Array.isArray(val)) {
-                return val.length > 0 ? <span className="highlight-input">{val.join("、")}</span> : <span className="text-gray-400">{fallback}</span>;
-            }
-            return val ? <span className="highlight-input">{val}</span> : <span className="text-gray-400">{fallback}</span>;
-        };
-
-        const formatDate = (dateStr) => {
-            if(!dateStr) return "___年___月___日";
-            const d = new Date(dateStr);
-            return `${d.getFullYear() - 1911}年${d.getMonth() + 1}月${d.getDate()}日`;
-        };
-
-        const App = () => {
-            // --- 表單狀態 ---
-            const [data, setData] = useState({
-                visitDate: new Date().toISOString().split('T')[0],
-                visitType: "",
-                referrer: "",
-                participants: [],
-                age: "",
-                gender: "",
-                welfare: "",
-                disability: "",
-                foreignCare: "",
-                marriage: "",
-                children: "",
-                livingWith: [],
-                mainCaregiver: "", // 手動輸入
-                memo1: "",
-                diseases: [],
-                diseasesOther: "", // 手動輸入
-                escort: [],
-                hospital: "",
-                pastDiseases: "",
-                consciousness: "",
-                communication: "",
-                disabilityReason: [],
-                actionStatus: [],
-                actionItems: [],
-                toileting: "",
-                transferring: "",
-                walking: [],
-                stairs: "",
-                housingType: "",
-                livingEnvironment: "",
-                serviceItems: [],
-                careNeed: "",
-                careLevel: "",
-                dispatchPrinciple: "",
-                aUnit: "",
-                finalMemo: ""
-            });
-
-            // 處理單一值變更
-            const handleChange = (e) => {
-                const { name, value } = e.target;
-                setData(prev => ({ ...prev, [name]: value }));
-            };
-
-            // 處理複選陣列變更
-            const handleArrayChange = (name, value, isChecked) => {
-                setData(prev => {
-                    const currentArray = prev[name] || [];
-                    if (isChecked) {
-                        return { ...prev, [name]: [...currentArray, value] };
-                    } else {
-                        return { ...prev, [name]: currentArray.filter(item => item !== value) };
-                    }
-                });
-            };
-
-            // 列印功能
-            const handlePrint = () => {
-                window.print();
-            };
-
-            return (
-                <div className="min-h-screen">
-                    {/* 頂部導覽列 (不列印) */}
-                    <nav className="bg-white shadow-sm p-4 sticky top-0 z-10 no-print flex justify-between items-center">
-                        <div className="flex items-center">
-                            <div className="bg-blue-600 p-2 rounded-lg mr-3">
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            </div>
-                            <h1 className="text-2xl font-bold text-gray-800">新案訪視紀錄系統</h1>
-                        </div>
-                        <button 
-                            onClick={handlePrint}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow flex items-center transition-colors"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                            列印 / 儲存為 PDF
-                        </button>
-                    </nav>
-
-                    <div className="max-w-7xl mx-auto p-4 flex flex-col lg:flex-row gap-6">
-                        
-                        {/* 左側表單編輯區 (不列印) */}
-                        <div className="w-full lg:w-1/2 no-print space-y-6">
-
-                            <SectionCard title="基本資訊與轉入來源">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">訪視日期</label>
-                                        <input type="date" name="visitDate" value={data.visitDate} onChange={handleChange} className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"/>
-                                    </div>
-                                    <RadioGroup label="訪視類別" name="visitType" options={OPTIONS.visitType} value={data.visitType} onChange={handleChange} />
-                                </div>
-                                <RadioGroup label="轉介人員" name="referrer" options={OPTIONS.referrer} value={data.referrer} onChange={handleChange} />
-                                <CheckboxGroup label="訪視參與人員" name="participants" options={OPTIONS.participants} values={data.participants} onChange={handleArrayChange} />
-                            </SectionCard>
-
-                            <SectionCard title="1. 個案摘要">
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">年齡</label>
-                                        <input type="number" name="age" value={data.age} onChange={handleChange} className="w-full p-2 border rounded" placeholder="歲"/>
-                                    </div>
-                                    <RadioGroup label="性別" name="gender" options={OPTIONS.gender} value={data.gender} onChange={handleChange} />
-                                </div>
-                                <RadioGroup label="身分福利別" name="welfare" options={OPTIONS.welfare} value={data.welfare} onChange={handleChange} />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <RadioGroup label="身障證明" name="disability" options={OPTIONS.disability} value={data.disability} onChange={handleChange} />
-                                    <RadioGroup label="外看聘僱情形" name="foreignCare" options={OPTIONS.foreignCare} value={data.foreignCare} onChange={handleChange} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <RadioGroup label="婚姻狀況" name="marriage" options={OPTIONS.marriage} value={data.marriage} onChange={handleChange} />
-                                    <RadioGroup label="生育情況" name="children" options={OPTIONS.children} value={data.children} onChange={handleChange} />
-                                </div>
-                                <CheckboxGroup label="同住家人" name="livingWith" options={OPTIONS.livingWith} values={data.livingWith} onChange={handleArrayChange} />
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">主要照顧者 (請手動輸入)</label>
-                                    <input type="text" name="mainCaregiver" value={data.mainCaregiver} onChange={handleChange} className="w-full p-2 border rounded" placeholder="例如：案女、外籍看護等"/>
-                                </div>
-                                <RadioGroup label="備註 (同住子女狀況等)" name="memo1" options={OPTIONS.memo1Options} value={data.memo1} onChange={handleChange} />
-                            </SectionCard>
-
-                            <SectionCard title="2. 醫療與疾病">
-                                <CheckboxGroup label="疾病項目" name="diseases" options={OPTIONS.diseases} values={data.diseases} onChange={handleArrayChange} />
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">疾病其他備註 (如：特定部位骨折)</label>
-                                    <input type="text" name="diseasesOther" value={data.diseasesOther} onChange={handleChange} className="w-full p-2 border rounded" placeholder="若上方有勾選骨折或癌症等，請在此補充"/>
-                                </div>
-                                <CheckboxGroup label="就醫陪同人員" name="escort" options={OPTIONS.escort} values={data.escort} onChange={handleArrayChange} />
-                                <RadioGroup label="就診醫療單位" name="hospital" options={OPTIONS.hospital} value={data.hospital} onChange={handleChange} />
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">過往疾病史</label>
-                                    <textarea name="pastDiseases" value={data.pastDiseases} onChange={handleChange} rows="2" className="w-full p-2 border rounded" placeholder="個案另有..."></textarea>
-                                </div>
-                            </SectionCard>
-
-                            <SectionCard title="3. 日常活動與狀態">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <RadioGroup label="意識情形" name="consciousness" options={OPTIONS.consciousness} value={data.consciousness} onChange={handleChange} />
-                                    <RadioGroup label="溝通能力" name="communication" options={OPTIONS.communication} value={data.communication} onChange={handleChange} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <CheckboxGroup label="失能原因" name="disabilityReason" options={OPTIONS.disabilityReason} values={data.disabilityReason} onChange={handleArrayChange} />
-                                    <CheckboxGroup label="執行情形" name="actionStatus" options={OPTIONS.actionStatus} values={data.actionStatus} onChange={handleArrayChange} />
-                                </div>
-                                <CheckboxGroup label="須協助執行項目" name="actionItems" options={OPTIONS.actionItems} values={data.actionItems} onChange={handleArrayChange} />
-                                <RadioGroup label="如廁能力" name="toileting" options={OPTIONS.toileting} value={data.toileting} onChange={handleChange} />
-                                <RadioGroup label="移位情形" name="transferring" options={OPTIONS.transferring} value={data.transferring} onChange={handleChange} />
-                                <CheckboxGroup label="行走情形" name="walking" options={OPTIONS.walking} values={data.walking} onChange={handleArrayChange} />
-                                <RadioGroup label="上下樓梯" name="stairs" options={OPTIONS.stairs} value={data.stairs} onChange={handleChange} />
-                            </SectionCard>
-
-                            <SectionCard title="4. 居住、期待與照顧計畫">
-                                <RadioGroup label="住所類型" name="housingType" options={OPTIONS.housingType} value={data.housingType} onChange={handleChange} />
-                                <RadioGroup label="居住環境" name="livingEnvironment" options={OPTIONS.livingEnvironment} value={data.livingEnvironment} onChange={handleChange} />
-                                <div className="mt-4 border-t pt-4">
-                                    <CheckboxGroup label="期待使用服務項目" name="serviceItems" options={OPTIONS.serviceItems} values={data.serviceItems} onChange={handleArrayChange} />
-                                    <div className="mt-3">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">長照需要等級</label>
-                                        <input type="text" name="careLevel" value={data.careLevel} onChange={handleChange} className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500" placeholder="例如：2"/>
-                                    </div>
-                                    <div className="mt-3">
-                                        <RadioGroup label="家照需求" name="careNeed" options={OPTIONS.careNeed} value={data.careNeed} onChange={handleChange} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 mt-3">
-                                        <RadioGroup label="派案原則" name="dispatchPrinciple" options={OPTIONS.dispatchPrinciple} value={data.dispatchPrinciple} onChange={handleChange} />
-                                    </div>
-                                    <div className="mt-3">
-                                        <RadioGroup label="A單位" name="aUnit" options={OPTIONS.aUnit} value={data.aUnit} onChange={handleChange} />
-                                    </div>
-                                </div>
-                            </SectionCard>
-                        </div>
-
-                        {/* 右側 PDF 預覽區 / 列印區 */}
-                        <div className="w-full lg:w-1/2 print:w-full">
-                            <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto print:max-h-none print:overflow-visible">
-                                <div className="bg-white shadow-lg border border-gray-300 print:shadow-none print:border-none print-container min-h-[1050px]">
-                                    
-                                    <div className="text-right mb-4">
-                                        {formatDate(data.visitDate)} ({f(data.visitType, "訪視類別")})
-                                    </div>
-
-                                    <h3>【個案轉入來源】</h3>
-                                    <p>
-                                        本案由 {f(data.referrer, "轉介人員")} 提出長照服務申請，本次與 {f(data.participants, "訪視參與人員")} 共同評估及討論照顧服務。
-                                    </p>
-
-                                    <h3>【個案狀況摘要】</h3>
-                                    
-                                    <p>
-                                        1. 個案為 {f(data.age, "年齡")} 歲 {f(data.gender, "性別")} 性、身分福利別：{f(data.welfare, "福利身分類別")}、{f(data.disability, "有無身障證明")}、{f(data.foreignCare, "外籍看護聘僱")}。個案{f(data.marriage, "婚姻")}，{f(data.children, "生育情況")}，現與 {f(data.livingWith, "同住家人")}，並由 {f(data.mainCaregiver, "主要照顧者")} 主責照顧。
-                                    </p>
-                                    {(data.memo1) && (
-                                        <p className="ml-6 whitespace-pre-wrap">
-                                            ※視情況備註：{data.memo1}
-                                        </p>
-                                    )}
-
-                                    <p>
-                                        2. 個案患有 {f(data.diseases.length > 0 ? data.diseases.join("、") + (data.diseasesOther ? " ("+data.diseasesOther+")" : "") : "", "疾病項目")}，現穩定由 {f(data.escort, "就醫陪同人員")} 至 {f(data.hospital, "就診醫療單位")}。
-                                    </p>
-                                    {(data.pastDiseases) && (
-                                        <p className="ml-6 whitespace-pre-wrap">
-                                            ※視情況備註：個案另有 {f(data.pastDiseases)}。
-                                        </p>
-                                    )}
-
-                                    <p>
-                                        3. 訪視時，個案 {f(data.consciousness, "意識情形")}，{f(data.communication, "溝通能力")}。個案因 {f(data.disabilityReason, "失能原因")} 致日常活動 {f(data.actionStatus, "執行情形")}。現 {f(data.actionItems, "日常活動項目")}，須由他人協助下執行。個案 {f(data.toileting, "如廁能力")}。訪視見，個案 {f(data.transferring, "移位情形")}、個案 {f(data.walking, "行走情形")}，另 {f(data.stairs, "上下樓梯情形")}。
-                                    </p>
-                                    
-                                    <div className="mt-2">
-                                        <p>※視情況備註：</p>
-                                        <p className="ml-6 mb-1">(1) 個案另有(特殊照顧情形-管灌/傷口/疼痛、使用氧氣/血氧監測/施打胰島素)等特殊照護。</p>
-                                        <p className="ml-6 mb-1">(2) 又案家人另表示個案具有(遊走/作息混亂/言語攻擊/干擾行為/抗拒照顧/幻想/妄想/重複行為/焦慮/憂鬱/攻擊)等情緒行為問題。</p>
-                                        <p className="ml-6 mb-1">(3) 案家住所為 {f(data.housingType, "住所類型")}，整體 {f(data.livingEnvironment, "居住環境")}。</p>
-                                    </div>
-
-                                    <h3>【個案與家屬期待】</h3>
-                                    <p>
-                                        案家期待使用 {f(data.serviceItems, "服務項目")} 照顧、交通接送及喘息服務。
-                                    </p>
-
-                                    <h3>【照顧計畫說明】</h3>
-                                    <p>
-                                        本次計畫於 {formatDate(data.visitDate)} ({f(data.visitType, "訪視類別")}) 長照需要等級為第 {f(data.careLevel, "O")} 級，評估照顧問題，詳見系統問題清單，照專與 {f(data.participants, "訪視參與人員")} 討論照顧需求如下:
-                                    </p>
-                                    <div className="ml-6 mt-2 space-y-1">
-                                        <p>1.照顧及專業額度：10,020元/月。(備註:本次計畫不足月，核定額度依系統計核)</p>
-                                        <p className="ml-4">居家服務：具使用需求，項目:陪同就醫。</p>
-                                        <p className="ml-4">專業服務: 無使用需求。</p>
-                                        <p>2.交通接送：1680元/月，具使用需求。(備註:本次計畫不足月，核定額度依系統計核)</p>
-                                        <p>3.輔具服務及居家無障礙環境改善服務：40000元/3年。無使用需求。</p>
-                                        <p>4.喘息服務 :給付額度32,340/年，具使用需要，需要時另提出申請。</p>
-                                        <p>5.轉介其他資源：。</p>
-                                        <p>A. {f(data.careNeed, "(家照需求)")}</p>
-                                        <p>B. 依據衛部顧字第110960777號函之說明，本案(AA08、09核定)</p>
-                                    </div>
-
-                                    <p className="mt-2">
-                                        本案依 {f(data.dispatchPrinciple, "(派案原則)")} 派案 {f(data.aUnit, "(A單位)")} 為A單位個管，請A單位於督導簽審2天內完成個案問題、確立照顧目標，擬定適切照顧組合並於計畫簡述中完整呈現照顧計畫送審，核備後照會B單位提供服務，倘有專業需求、輔具或無障礙改善需求者，逕依服務規定備妥文件，正確進行系統照會操作。
-                                    </p>
-
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
