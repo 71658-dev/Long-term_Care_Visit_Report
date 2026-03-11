@@ -184,7 +184,11 @@ const SettingsModal = ({
     setLocalOptions(options);
   }, [options]);
   const handleSave = () => {
-    setOptions(localOptions);
+    const cleanedOptions = {};
+    for (const key in localOptions) {
+      cleanedOptions[key] = localOptions[key].filter(item => item.trim() !== '');
+    }
+    setOptions(cleanedOptions);
     onClose();
   };
   const handleReset = () => {
@@ -195,7 +199,7 @@ const SettingsModal = ({
   };
   const handleTextChange = e => {
     const text = e.target.value;
-    const newArray = text.split('\n').filter(item => item.trim() !== '');
+    const newArray = text.split('\n');
     setLocalOptions(prev => ({
       ...prev,
       [activeTab]: newArray
