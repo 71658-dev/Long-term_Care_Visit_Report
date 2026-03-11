@@ -3,6 +3,17 @@ const {
   useEffect
 } = React;
 
+
+// --- ICONS (SVG React Elements) ---
+const ICONS = {
+  info: React.createElement("svg", {width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"}, React.createElement("circle", {cx: "12", cy: "12", r: "10"}), React.createElement("path", {d: "M12 16v-4"}), React.createElement("path", {d: "M12 8h.01"})),
+  user: React.createElement("svg", {width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"}, React.createElement("path", {d: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"}), React.createElement("circle", {cx: "12", cy: "7", r: "4"})),
+  medical: React.createElement("svg", {width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"}, React.createElement("path", {d: "M22 12h-4l-3 9L9 3l-3 9H2"})),
+  activity: React.createElement("svg", {width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"}, React.createElement("circle", {cx: "12", cy: "12", r: "10"}), React.createElement("polyline", {points: "12 6 12 12 16 14"})),
+  home: React.createElement("svg", {width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"}, React.createElement("path", {d: "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}), React.createElement("polyline", {points: "9 22 9 12 15 12 15 22"})),
+  trash: React.createElement("svg", {width: "20", height: "20", className: "mr-2", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round"}, React.createElement("path", {d: "M3 6h18"}), React.createElement("path", {d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"})),
+};
+
 // --- 選項資料 (整理自 CSV) ---
 const DEFAULT_OPTIONS = {
   visitType: ["初評", "復評"],
@@ -45,12 +56,17 @@ const DEFAULT_OPTIONS = {
 // --- 共用 UI 元件 ---
 const SectionCard = ({
   title,
+  icon,
   children
 }) => /*#__PURE__*/React.createElement("div", {
   className: "bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6"
-}, /*#__PURE__*/React.createElement("h2", {
-  className: "text-xl font-bold text-gray-800 border-b-2 border-blue-500 pb-2 mb-4"
-}, title), /*#__PURE__*/React.createElement("div", {
+}, /*#__PURE__*/React.createElement("div", {
+  className: "flex items-center border-b-2 border-blue-500 pb-2 mb-4"
+}, icon && /*#__PURE__*/React.createElement("div", {
+  className: "mr-2 text-blue-600"
+}, icon), /*#__PURE__*/React.createElement("h2", {
+  className: "text-xl font-bold text-gray-800"
+}, title)), /*#__PURE__*/React.createElement("div", {
   className: "space-y-4"
 }, children));
 const RadioGroup = ({
@@ -61,24 +77,22 @@ const RadioGroup = ({
   onChange,
   required = false
 }) => /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-  className: "block text-sm font-medium text-gray-700 mb-1"
+  className: "block text-sm font-medium text-gray-700 mb-2"
 }, label, " ", required && /*#__PURE__*/React.createElement("span", {
   className: "text-red-500"
 }, "*")), /*#__PURE__*/React.createElement("div", {
-  className: "flex flex-wrap gap-3"
+  className: "flex flex-wrap gap-2"
 }, options.map(opt => /*#__PURE__*/React.createElement("label", {
   key: opt,
-  className: `flex items-center p-2 border rounded cursor-pointer transition-colors ${value === opt ? 'bg-blue-50 border-blue-400' : 'bg-gray-50 hover:bg-gray-100'}`
+  className: `chip-label ${value === opt ? 'chip-radio-active' : ''}`
 }, /*#__PURE__*/React.createElement("input", {
   type: "radio",
   name: name,
   value: opt,
   checked: value === opt,
   onChange: onChange,
-  className: "text-blue-600 focus:ring-blue-500 mr-2"
-}), /*#__PURE__*/React.createElement("span", {
-  className: "text-sm text-gray-800"
-}, opt)))));
+  className: "hidden"
+}), opt))));
 const CheckboxGroup = ({
   label,
   name,
@@ -86,22 +100,23 @@ const CheckboxGroup = ({
   values = [],
   onChange
 }) => /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-  className: "block text-sm font-medium text-gray-700 mb-1"
+  className: "block text-sm font-medium text-gray-700 mb-2"
 }, label, " ", /*#__PURE__*/React.createElement("span", {
-  className: "text-xs text-blue-500 font-normal ml-2"
+  className: "text-xs text-blue-500 font-normal ml-1"
 }, "(\u53EF\u8907\u9078)")), /*#__PURE__*/React.createElement("div", {
-  className: "flex flex-wrap gap-3"
-}, options.map(opt => /*#__PURE__*/React.createElement("label", {
-  key: opt,
-  className: `flex items-center p-2 border rounded cursor-pointer transition-colors ${values.includes(opt) ? 'bg-green-50 border-green-400' : 'bg-gray-50 hover:bg-gray-100'}`
-}, /*#__PURE__*/React.createElement("input", {
-  type: "checkbox",
-  checked: values.includes(opt),
-  onChange: e => onChange(name, opt, e.target.checked),
-  className: "text-green-600 focus:ring-green-500 mr-2 rounded"
-}), /*#__PURE__*/React.createElement("span", {
-  className: "text-sm text-gray-800"
-}, opt)))));
+  className: "flex flex-wrap gap-2"
+}, options.map(opt => {
+  const isChecked = values.includes(opt);
+  return /*#__PURE__*/React.createElement("label", {
+    key: opt,
+    className: `chip-label chip-checkbox-hover ${isChecked ? 'chip-checkbox-active' : ''}`
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: isChecked,
+    onChange: e => onChange(name, opt, e.target.checked),
+    className: "hidden"
+  }), opt);
+})));
 
 // 輔助函數：格式化輸出文字
 const f = (val, fallback = "______") => {
@@ -294,7 +309,7 @@ const App = () => {
 
   // --- 表單狀態 ---
 
-  const [data, setData] = useState({
+  const DEFAULT_DATA = {
     visitDate: new Date().toISOString().split('T')[0],
     visitType: "",
     referrer: "",
@@ -331,7 +346,27 @@ const App = () => {
     dispatchPrinciple: "",
     aUnit: "",
     finalMemo: ""
+  };
+
+  const [data, setData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('longterm_visit_data');
+      return saved ? JSON.parse(saved) : DEFAULT_DATA;
+    } catch (e) {
+      return DEFAULT_DATA;
+    }
   });
+
+  useEffect(() => {
+    localStorage.setItem('longterm_visit_data', JSON.stringify(data));
+  }, [data]);
+
+  const handleClearData = () => {
+    if (window.confirm("確定要清除所有填寫的資料嗎？此動作無法復原。")) {
+      setData(DEFAULT_DATA);
+      localStorage.removeItem('longterm_visit_data');
+    }
+  };
 
   // 處理單一值變更
   const handleChange = e => {
@@ -408,6 +443,9 @@ const App = () => {
   }, "\u65B0\u6848\u8A2A\u8996\u7D00\u9304\u7CFB\u7D71")), /*#__PURE__*/React.createElement("div", {
     className: "flex gap-2"
   }, /*#__PURE__*/React.createElement("button", {
+    onClick: handleClearData,
+    className: "bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 px-4 rounded-lg shadow flex items-center transition-colors border border-red-200"
+  }, ICONS.trash, "\u6E05\u9664\u8CC7\u6599"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setShowSettings(true),
     className: "bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg shadow flex items-center transition-colors"
   }, /*#__PURE__*/React.createElement("svg", {
@@ -456,7 +494,7 @@ const App = () => {
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-1/2 no-print space-y-6"
   }, /*#__PURE__*/React.createElement(SectionCard, {
-    title: "\u57FA\u672C\u8CC7\u8A0A\u8207\u8F49\u5165\u4F86\u6E90"
+    title: "\u57FA\u672C\u8CC7\u8A0A\u8207\u8F49\u5165\u4F86\u6E90", icon: ICONS.info
   }, /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
@@ -486,7 +524,7 @@ const App = () => {
     values: data.participants,
     onChange: handleArrayChange
   })), /*#__PURE__*/React.createElement(SectionCard, {
-    title: "1. \u500B\u6848\u6458\u8981"
+    title: "1. \u500B\u6848\u6458\u8981", icon: ICONS.user
   }, /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-3 gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
@@ -560,7 +598,7 @@ const App = () => {
     value: data.memo1,
     onChange: handleChange
   })), /*#__PURE__*/React.createElement(SectionCard, {
-    title: "2. \u91AB\u7642\u8207\u75BE\u75C5"
+    title: "2. \u91AB\u7642\u8207\u75BE\u75C5", icon: ICONS.medical
   }, /*#__PURE__*/React.createElement(CheckboxGroup, {
     label: "\u75BE\u75C5\u9805\u76EE",
     name: "diseases",
@@ -598,7 +636,7 @@ const App = () => {
     className: "w-full p-2 border rounded",
     placeholder: "\u500B\u6848\u53E6\u6709..."
   }))), /*#__PURE__*/React.createElement(SectionCard, {
-    title: "3. \u65E5\u5E38\u6D3B\u52D5\u8207\u72C0\u614B"
+    title: "3. \u65E5\u5E38\u6D3B\u52D5\u8207\u72C0\u614B", icon: ICONS.activity
   }, /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 gap-4"
   }, /*#__PURE__*/React.createElement(RadioGroup, {
@@ -658,7 +696,7 @@ const App = () => {
     value: data.stairs,
     onChange: handleChange
   })), /*#__PURE__*/React.createElement(SectionCard, {
-    title: "4. \u5C45\u4F4F\u3001\u671F\u5F85\u8207\u7167\u9867\u8A08\u756B"
+    title: "4. \u5C45\u4F4F\u3001\u671F\u5F85\u8207\u7167\u9867\u8A08\u756B", icon: ICONS.home
   }, /*#__PURE__*/React.createElement(RadioGroup, {
     label: "\u4F4F\u6240\u985E\u578B",
     name: "housingType",
